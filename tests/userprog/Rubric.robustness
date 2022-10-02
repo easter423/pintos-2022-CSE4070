@@ -1,0 +1,15 @@
+Robustness of system calls:
+
+- Test robustness of pointer handling.
+3	exec-bad-ptr
+
+- Test robustness of system call implementation.
+3	sc-bad-arg
+3	sc-bad-sp
+5	sc-boundary
+5	sc-boundary-2
+
+- Test robustness of "exec" and "wait" system calls.
+5	exec-missing
+5	wait-bad-pid
+5	wait-killed

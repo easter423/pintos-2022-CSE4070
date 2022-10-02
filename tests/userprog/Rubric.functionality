@@ -1,0 +1,25 @@
+Functionality of system calls:
+- Test argument passing on Pintos command line.
+3	args-none
+3	args-single
+3	args-multiple
+3	args-many
+3	args-dbl-space
+
+- Test "exec" system call.
+5	exec-once
+5	exec-multiple
+5	exec-arg
+
+- Test "wait" system call.
+5	wait-simple
+5	wait-twice
+
+- Test "exit" system call.
+5	exit
+
+- Test "halt" system call.
+3	halt
+
+- Test recursive execution of user programs.
+15	multi-recurse
