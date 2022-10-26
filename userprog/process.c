@@ -17,6 +17,8 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -30,26 +32,40 @@ process_execute (const char *file_name)
 {
 char *fn_copy;
 tid_t tid;
-char parse_name[128];
+char *parse_name;
 char *next_ptr=NULL;
+struct thread *cur = thread_current();
+struct list_elem *e;
 
 /* Make a copy of FILE_NAME.
 	 Otherwise there's a race between the caller and load(). */
 fn_copy = palloc_get_page (0);
 if (fn_copy == NULL)
 	return TID_ERROR;
+
 strlcpy (fn_copy, file_name, PGSIZE);
 
 /* Create a new thread to execute FILE_NAME. */
 // TODO
+parse_name=(char *)malloc(sizeof(char)*strlen(file_name)+1);
 strlcpy (parse_name, file_name, strlen(file_name)+1);
 strtok_r(parse_name, " ", &next_ptr);
 if (!filesys_open(parse_name)) {
   return -1; 
 }
 tid = thread_create (parse_name, PRI_DEFAULT, start_process, fn_copy);
+sema_down(&thread_current()->sema3);
 if (tid == TID_ERROR)
 	palloc_free_page (fn_copy); 
+for (e = list_begin (&cur->child); e != list_end (&cur->child);
+       e = list_next (e))
+  {
+    struct thread *t = list_entry (e, struct thread, child_elem);
+    if (t->failed==1){
+      return process_wait(tid);
+    }
+  }
+free(parse_name);
 return tid;
 }
 
@@ -70,8 +86,11 @@ success = load (file_name, &if_.eip, &if_.esp);
 
 /* If load failed, quit. */
 palloc_free_page (file_name);
-if (!success) 
-	thread_exit ();
+sema_up(&thread_current()->parent->sema3);
+if (!success) {
+  thread_current()->failed=1;
+	exit (-1);
+}
 
 /* Start the user process by simulating a return from an
 	 interrupt, implemented by intr_exit (in
@@ -95,23 +114,21 @@ NOT_REACHED ();
 int
 process_wait (tid_t child_tid) 
 {
-	//for(int i=0;i<1000000000;i++);
-	//thread_yield();
   struct list_elem *e;
   struct thread *cur = thread_current();
   int status;
   for (e = list_begin (&cur->child); e != list_end (&cur->child);
        e = list_next (e))
-    {
-      struct thread *t = list_entry (e, struct thread, child_elem);
-      if (t->tid == child_tid){
-        sema_down(&(t->sema));
-        status = t->exit_status;
-        list_remove(&(t->child_elem));
-        sema_up(&(t->sema2));
-        return status;
-      }
+  {
+    struct thread *t = list_entry (e, struct thread, child_elem);
+    if (t->tid == child_tid){
+      sema_down(&(t->sema));
+      status = t->exit_status;
+      list_remove(&(t->child_elem));
+      sema_up(&(t->sema2));
+      return status;
     }
+  }
 	return -1;
 }
 
@@ -242,9 +259,9 @@ struct file *file = NULL;
 off_t file_ofs;
 bool success = false;
 int i, len, size, argc;
-char *argv[32];
+char **argv;
 char *token;
-char file_name_[256];
+char *file_name_;
 char *save_ptr = NULL;
 
 /* Allocate and activate page directory. */
@@ -255,14 +272,21 @@ process_activate ();
 
 //TODO 1
 size = strlen(file_name)+1;
-strlcpy(file_name_,file_name,sizeof file_name_);
+file_name_=(char *)malloc(sizeof(char)*size);
+strlcpy(file_name_,file_name,size);
 
 argc = 0;
 for(token = strtok_r(file_name_, " ", &save_ptr); token != NULL;
 		token = strtok_r(NULL, " ", &save_ptr))
 {
-	argv[argc] = token;
-	argc += 1;
+	argc++;
+}
+argv = (char **)malloc(sizeof(char *)*argc);
+strlcpy(file_name_,file_name,size);
+for(i=0, token = strtok_r(file_name_, " ", &save_ptr); token != NULL;
+		token = strtok_r(NULL, " ", &save_ptr))
+{
+	argv[i++] = token;
 }
 
   /* Open executable file. */
@@ -359,6 +383,7 @@ for(token = strtok_r(file_name_, " ", &save_ptr); token != NULL;
 	}
 	*esp -= (-(size%4)+4)%4+8;
 	**(uint32_t **)esp = 0;
+  *esp -= 4;
 	for(i = argc - 1; i >= 0; i--, *esp -= 4)
 	{
 		**(uint32_t **)esp = (uint32_t)argv[i];
@@ -368,17 +393,16 @@ for(token = strtok_r(file_name_, " ", &save_ptr); token != NULL;
 	**(uint32_t **)esp = argc;
 	*esp -= 4;
 	**(uint32_t **)esp = 0;
-	//debugging
-	//printf("debugging\n");
-  //hex_dump((uintptr_t)*esp,*esp,100,true);
 	/* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;
 
   success = true;
 
- done:
+  done:
   /* We arrive here whether the load is successful or not. */
   file_close (file);
+  free(argv);
+  free(file_name_);
   return success;
 }
 

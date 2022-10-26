@@ -5,6 +5,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "userprog/syscall.h"
+#include "threads/vaddr.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -150,7 +151,7 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
    //TODO
-   if(!user)
+   if(not_present || is_kernel_vaddr(fault_addr))
    {
       exit(-1);
    }

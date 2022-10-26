@@ -98,10 +98,13 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     //TODO
-    struct semaphore sema, sema2;
+    struct semaphore sema, sema2, sema3;
+    struct thread* parent;
     struct list child;
     struct list_elem child_elem;
     int exit_status;
+    int failed;
+    struct file* fd[131];
 
 #endif
 
