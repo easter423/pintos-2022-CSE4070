@@ -473,7 +473,7 @@ init_thread (struct thread *t, const char *name, int priority)
     t->failed=0;
     t->parent = running_thread();
     for (int i = 0; i < 131; i++)                                                    
-      t->fd[i] = NULL;  
+      t->fdt[i] = NULL;  
     sema_init(&(t->sema), 0);
     sema_init(&(t->sema2), 0);
     sema_init(&(t->sema3), 0);

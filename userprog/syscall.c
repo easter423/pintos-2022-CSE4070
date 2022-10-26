@@ -12,12 +12,13 @@
 #include "filesys/off_t.h"
 #include "threads/synch.h"
 
-struct file
-{
-	struct inode *inode;
-	off_t pos;
-	bool deny_write;
-};
+struct file 
+  {
+    struct inode *inode;        /* File's inode. */
+    off_t pos;                  /* Current position. */
+    bool deny_write;            /* Has file_deny_write() been called? */
+  };
+
 struct lock syn_lock;
 
 static void syscall_handler (struct intr_frame *);
@@ -120,7 +121,7 @@ void exit(int status)
 	thread_current()->exit_status = status;
 	for (int i=3;i<131;i++)
 	{
-		if(thread_current()->fd[i])
+		if(thread_current()->fdt[i])
 		{
 			close(i);
 		}
@@ -168,7 +169,7 @@ int open (const char *file)
 		int i=3;
 		while (i<131)
 		{
-			if(!thread_current()->fd[i]){
+			if(!thread_current()->fdt[i]){
 				int j=0;
 				while (thread_name()[j]==file[j]){
 					if (file[j]=='\0')
@@ -178,7 +179,7 @@ int open (const char *file)
 					}
 					j++;
 				}
-				thread_current()->fd[i]=fs;
+				thread_current()->fdt[i]=fs;
 				return i;
 			}
 			i++;
@@ -189,7 +190,7 @@ int open (const char *file)
 
 int filesize (int fd)
 {
-	struct file *fs=thread_current()->fd[fd];
+	struct file *fs=thread_current()->fdt[fd];
 	if (!fs)
 	{
 		exit(-1);
@@ -213,7 +214,7 @@ int read(int fd, void *buffer, unsigned size)
 	}
 	else if(fd>2)
 	{
-		struct file *fs=thread_current()->fd[fd];
+		struct file *fs=thread_current()->fdt[fd];
 		if (!fs)
 		{
 			exit(-1);
@@ -234,7 +235,7 @@ int write(int fd, const void *buffer, unsigned size)
 		ret = size;
 	}
 	else if(fd>2){
-		struct file *fs=thread_current()->fd[fd];
+		struct file *fs=thread_current()->fdt[fd];
 		if (!fs)
 		{
 			exit(-1);
@@ -248,7 +249,7 @@ int write(int fd, const void *buffer, unsigned size)
 
 void seek (int fd, unsigned position)
 {
-	struct file *fs=thread_current()->fd[fd];
+	struct file *fs=thread_current()->fdt[fd];
 	if (!fs)
 	{
 		exit(-1);
@@ -258,7 +259,7 @@ void seek (int fd, unsigned position)
 
 unsigned tell (int fd)
 {
-	struct file *fs=thread_current()->fd[fd];
+	struct file *fs=thread_current()->fdt[fd];
 	if (!fs)
 	{
 		exit(-1);
@@ -268,14 +269,13 @@ unsigned tell (int fd)
 
 void close (int fd)
 {
-	struct file *fs=thread_current()->fd[fd];
+	struct file *fs=thread_current()->fdt[fd];
 	if (!fs)
 	{
 		exit(-1);
 	}
-	file_allow_write(fs);
-	fs=NULL;
-	return file_close(fs);
+	thread_current()->fdt[fd]=NULL;
+	file_close(fs);
 }
 
 int fibonacci(int n)
