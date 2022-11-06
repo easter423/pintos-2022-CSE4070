@@ -155,7 +155,7 @@ void
 thread_aging (void)
 {
   int pri = thread_current()->priority;
-  if (pri < PRI_MAX)
+  if (pri < PRI_MIN)
     thread_set_priority (pri+1);
 }
 
