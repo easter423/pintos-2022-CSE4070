@@ -7,6 +7,10 @@
 #include "threads/synch.h"
 #include "filesys/file.h"
 
+#ifndef USERPROG
+extern bool thread_prior_aging;
+#endif
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -126,6 +130,8 @@ void thread_start (void);
 void thread_tick (void);
 void thread_print_stats (void);
 
+void thread_aging(void);
+
 typedef void thread_func (void *aux);
 tid_t thread_create (const char *name, int priority, thread_func *, void *);
 
@@ -138,6 +144,8 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
+
+bool thread_check_priority (struct list_elem *, struct list_elem *, void *);
 
 void thread_sleep (int64_t);
 void thread_wake (int64_t);
