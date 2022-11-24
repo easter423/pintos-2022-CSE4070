@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -77,6 +78,10 @@ start_process (void *file_name_)
 char *file_name = file_name_;
 struct intr_frame if_;
 bool success;
+
+/* hash table initialize */
+spt_init(&thread_current()->spage);
+
 /* Initialize interrupt frame and load executable. */
 memset (&if_, 0, sizeof if_);
 if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -141,6 +146,7 @@ uint32_t *pd;
 
 /* Destroy the current process's page directory and switch back
 	 to the kernel-only page directory. */
+spt_destroy(&cur->spage);
 pd = cur->pagedir;
 if (pd != NULL) 
 	{

@@ -171,7 +171,7 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
-  if (thread_prior_aging || thread_mlfqs){
+  if (thread_mlfqs){
     increase_recent_cpu();
     if (timer_ticks() % 4 == 0){
       update_priority();
