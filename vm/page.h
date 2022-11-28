@@ -22,8 +22,9 @@ struct spt_entry{
     struct hash_elem elem;  //hash_elem
 };
 
-static unsigned spt_hash(const struct hash_elem *, void *);
-unsigned spt_less(const struct hash_elem *, const struct hash_elem *, void *);
+static unsigned hash_hash(const struct hash_elem *, void *);
+static bool hash_less(const struct hash_elem *, const struct hash_elem *, void *);
+static void hash_hash_destroy(struct hash_elem *, void *);
 void spt_init(struct hash *);
 bool pg_insert(struct hash *, struct spt_entry *);
 bool pg_delete(struct hash *, struct spt_entry *);
