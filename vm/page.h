@@ -2,6 +2,8 @@
 #define VM_PAGE_H
 
 #include <hash.h>
+#include "filesys/file.h"
+#include <stdio.h>
 
 #define VM_BIN 0
 #define VM_FILE 1

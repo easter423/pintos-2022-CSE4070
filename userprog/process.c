@@ -19,6 +19,7 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -490,8 +491,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
+      struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+      if (!vme)
+        return false;
 
-      struct vm_entry * vme = malloc(sizeof(struct vm_entry));
       vme->type = VM_BIN;
       vme->vaddr = upage;
       vme->writable = writable;
@@ -500,8 +503,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       vme->offset = ofs;
       vme->read_bytes = page_read_bytes;
       vme->zero_bytes = page_zero_bytes;
-
+      
       insert_vme(&thread_current()->vm, vme);
+      
       // /* Get a page of memory. */
       // uint8_t *kpage = palloc_get_page (PAL_USER);
       // if (kpage == NULL)
@@ -581,18 +585,16 @@ install_page (void *upage, void *kpage, bool writable)
 bool handle_mm_fault(struct vm_entry *vme)
 {
   uint8_t *kpage = palloc_get_page (PAL_USER);
-  printf("[1]");
 	if (kpage == NULL)
 		return false;
 	switch(vme->type)
 	{
 		case VM_BIN:
-			if(!load_file(kpage, vme))
-			{
-        printf("[2]");
-				palloc_free_page(kpage);
-				return false;
-			}
+      if(!load_file (kpage, vme))
+      {
+        palloc_free_page (kpage);
+        return false;
+      }
 			break;
 		case VM_FILE:
 			break;

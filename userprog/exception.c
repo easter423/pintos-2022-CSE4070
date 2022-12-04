@@ -1,6 +1,7 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <debug.h>
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -152,6 +153,7 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
    if (not_present){
+      debug_backtrace_all();
       printf ("Page fault at %p: %s error %s page in %s context.\n",
             fault_addr,
             not_present ? "not present" : "rights violation",
@@ -161,7 +163,7 @@ page_fault (struct intr_frame *f)
       if (!vme)
          exit(-1);
       if (!handle_mm_fault(vme)){
-         exit(-1);}
+         exit(-2);}
    }
    else
       exit(-1);

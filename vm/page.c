@@ -8,12 +8,10 @@
 #include "threads/thread.h"
 #include "userprog/pagedir.h"
 
-
-
 static unsigned vm_hash_func (const struct hash_elem *e_, void *aux UNUSED)
 {
     struct vm_entry *e = hash_entry(e_, struct vm_entry, elem);
-    return hash_int((int)e->vaddr);
+    return hash_int((int)(e->vaddr));
 }
 
 static bool vm_less_func (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED)
@@ -67,9 +65,8 @@ void vm_destroy (struct hash *vm)
 
 bool load_file(void *kaddr, struct vm_entry *vme)
 {
-	file_seek(vme->file, vme->offset);
-	if(file_read (vme->file, kaddr, vme->read_bytes) != (int)(vme->read_bytes))
-		return false;
+	if (file_read_at (vme->file, kaddr, vme->read_bytes, vme->offset) != (int) vme->read_bytes)
+      return false;
 	memset (kaddr + vme->read_bytes, 0, vme->zero_bytes);
 	return true;
 }
