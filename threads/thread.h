@@ -7,6 +7,10 @@
 #include "threads/synch.h"
 #include "filesys/file.h"
 
+#ifdef VM
+#include "vm/page.h"
+#endif
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -106,7 +110,12 @@ struct thread
     int exit_status;
     int failed;
     struct file* fdt[131];
+    uint8_t *current_esp; 
+#endif
 
+#ifdef VM
+    // Project 3: Supplemental page table.
+    struct supplemental_page_table *supt;   /* Supplemental Page Table. */
 #endif
 
     /* Owned by thread.c. */

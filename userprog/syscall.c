@@ -35,6 +35,7 @@ syscall_handler (struct intr_frame *f)
 {
 	check_user((int *)f->esp, 0);
 	int *args = (int *)f->esp;
+	thread_current()->current_esp = f->esp;
 	switch(args[0])
 	{
 		case SYS_HALT:
