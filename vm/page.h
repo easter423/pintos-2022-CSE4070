@@ -28,5 +28,6 @@ bool insert_vme(struct hash *, struct vm_entry *);
 bool delete_vme(struct hash *, struct vm_entry *);
 struct vm_entry *find_vme(void *);
 void vm_destroy(struct hash *);
+bool load_file(void *, struct vm_entry *);
 
 #endif

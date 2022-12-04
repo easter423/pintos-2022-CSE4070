@@ -1,6 +1,8 @@
+#include <string.h>
 #include "vm/page.h"
 #include "vm/frame.h"
 #include "vm/swap.h"
+#include "filesys/file.h"
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "threads/thread.h"
@@ -61,4 +63,13 @@ struct vm_entry *find_vme (void *vaddr)
 void vm_destroy (struct hash *vm)
 {
 	hash_destroy (vm, vm_destroy_func);
+}
+
+bool load_file(void *kaddr, struct vm_entry *vme)
+{
+	file_seek(vme->file, vme->offset);
+	if(file_read (vme->file, kaddr, vme->read_bytes) != (int)(vme->read_bytes))
+		return false;
+	memset (kaddr + vme->read_bytes, 0, vme->zero_bytes);
+	return true;
 }

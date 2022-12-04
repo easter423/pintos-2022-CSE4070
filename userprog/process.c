@@ -19,7 +19,6 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
-#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -577,4 +576,34 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+bool handle_mm_fault(struct vm_entry *vme)
+{
+  uint8_t *kpage = palloc_get_page (PAL_USER);
+  printf("[1]");
+	if (kpage == NULL)
+		return false;
+	switch(vme->type)
+	{
+		case VM_BIN:
+			if(!load_file(kpage, vme))
+			{
+        printf("[2]");
+				palloc_free_page(kpage);
+				return false;
+			}
+			break;
+		case VM_FILE:
+			break;
+		case VM_ANON:
+			break;
+	}
+	if (!install_page (vme->vaddr, kpage, vme->writable))
+	{
+		palloc_free_page (kpage);
+		return false;
+	}
+	vme->is_loaded=true;
+	return true;
 }
