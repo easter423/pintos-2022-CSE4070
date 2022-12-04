@@ -33,8 +33,8 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f) 
 {
-	check_user((int *)f->esp, 0);
 	int *args = (int *)f->esp;
+	check_address((void*) args, f->esp);
 	switch(args[0])
 	{
 		case SYS_HALT:
@@ -46,6 +46,7 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_EXEC:
 			check_user(args, 1);
+			check_valid_string((void *)args[1], f->esp);
 			f->eax = exec((char *)args[1]);
 			break;
 		case SYS_WAIT:
@@ -54,14 +55,17 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_CREATE:
 			check_user(args, 2);
+			check_valid_string((void *)args[1], f->esp);
 			f->eax = create ((const char *)args[1], (unsigned)args[2]);
       		break;
 		case SYS_REMOVE:
 			check_user(args, 1);
+			check_valid_string((void *)args[1], f->esp);
 			f->eax = remove ((const char *)args[1]);
 			break;
 		case SYS_OPEN:
 			check_user(args, 1);
+			check_valid_string((void *)args[1], f->esp);
 			lock_acquire(&syn_lock);
 			f->eax = open ((const char *)args[1]);
 			lock_release(&syn_lock);
@@ -72,10 +76,12 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_READ:
 			check_user(args, 3);
+			check_valid_buffer((void *)args[2], (unsigned)args[3], f->esp, true);
 			f->eax = read(args[1], (void *)args[2], (unsigned)args[3]);
 			break;
 		case SYS_WRITE:
 			check_user(args, 3);
+			check_valid_string((void *)args[2], f->esp);
 			f->eax = write(args[1], (void *)args[2], (unsigned)args[3]);
 			break;
 		case SYS_SEEK:
@@ -102,12 +108,35 @@ syscall_handler (struct intr_frame *f)
 
 }
 
+struct vm_entry *check_address(void *addr, void *esp UNUSED)
+{
+	if(!is_user_vaddr(addr)){
+		exit(-1);
+	}
+	return find_vme(addr);
+}
+
 void check_user(int *args, int num)
 {
-	for(int i=0;i<num+1;i++)
-		if(!is_user_vaddr((void *)args[i])){
+	for(int i = 0; i < num + 1; i++)
+		check_address((void *)args[i], (void *)args);
+}
+
+void check_valid_buffer (void *buffer, unsigned size, void *esp, bool to_write UNUSED)
+{
+	for(void *addr = pg_round_down(buffer); addr < buffer + size; addr += PGSIZE)
+	{
+		struct vm_entry *vme = check_address(addr, esp);
+		if (!vme || !vme->writable)
 			exit(-1);
-		}
+	}
+}
+
+void check_valid_string (const void *str, void *esp)
+{
+	struct vm_entry *vme = check_address(str, esp);
+	if(!vme)
+		exit(-1);
 }
 
 void halt(void)
