@@ -6,10 +6,7 @@
 #include "threads/thread.h"
 #include "userprog/pagedir.h"
 
-void vm_init (struct hash *vm)
-{
-    hash_init(vm, vm_hash_func, vm_less_func, NULL);
-}
+
 
 static unsigned vm_hash_func (const struct hash_elem *e_, void *aux UNUSED)
 {
@@ -22,6 +19,17 @@ static bool vm_less_func (const struct hash_elem *a_, const struct hash_elem *b_
     struct vm_entry *a = hash_entry(a_, struct vm_entry, elem);
     struct vm_entry *b = hash_entry(b_, struct vm_entry, elem);
     return a->vaddr < b->vaddr;
+}
+
+static void vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
+{
+	struct vm_entry *vme = hash_entry(e, struct vm_entry, elem);
+	free(vme);
+}
+
+void vm_init (struct hash *vm)
+{
+    hash_init(vm, vm_hash_func, vm_less_func, NULL);
 }
 
 bool insert_vme (struct hash *vm, struct vm_entry *vme)
@@ -48,12 +56,6 @@ struct vm_entry *find_vme (void *vaddr)
     struct hash_elem *e = hash_find(&thread_current()->vm, &f.elem);
 
     return (e == NULL) ? NULL : hash_entry(e, struct vm_entry, elem);
-}
-
-static void vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
-{
-	struct vm_entry *vme = hash_entry(e, struct vm_entry, elem);
-	free(vme);
 }
 
 void vm_destroy (struct hash *vm)
