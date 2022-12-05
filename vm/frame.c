@@ -34,6 +34,8 @@ void del_page_from_lru_list(struct page* page)
 
 struct page* alloc_page(enum palloc_flags flags)
 {
+    lock_acquire(&lru_list_lock);
+    
     uint8_t *kpage = palloc_get_page(flags);
     while (!kpage){
         try_to_free_pages(flags);
@@ -44,6 +46,8 @@ struct page* alloc_page(enum palloc_flags flags)
     pg->thread = thread_current();
     pg->kaddr = kpage;
     add_page_to_lru_list(pg);
+
+    lock_release(&lru_list_lock);
     return pg;
 }
 
@@ -76,8 +80,6 @@ void __free_page(struct page* page)
 
 void try_to_free_pages(enum palloc_flags flags UNUSED)
 {
-    lock_acquire(&lru_list_lock);
-    
     struct page *pg = list_entry(lru_clock, struct page, lru);
     while (pagedir_is_accessed(pg->thread->pagedir, pg->vme->vaddr)){
         pagedir_set_accessed(pg->thread->pagedir, pg->vme->vaddr, false);
@@ -103,5 +105,4 @@ void try_to_free_pages(enum palloc_flags flags UNUSED)
     }
     target->vme->is_loaded = false;
     __free_page(target);
-    lock_release(&lru_list_lock);
 }
