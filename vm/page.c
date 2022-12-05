@@ -24,6 +24,7 @@ static bool vm_less_func (const struct hash_elem *a_, const struct hash_elem *b_
 static void vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
 {
 	struct vm_entry *vme = hash_entry(e, struct vm_entry, elem);
+    free_page(pagedir_get_page(thread_current()->pagedir, vme->vaddr));
 	free(vme);
 }
 
@@ -41,6 +42,7 @@ bool delete_vme (struct hash *vm, struct vm_entry *vme)
 {
     struct hash_elem *elem = hash_delete(vm, &vme->elem);
     if (elem != NULL){
+        free_page(pagedir_get_page(thread_current()->pagedir, vme->vaddr));
         free(vme);
         return true;
     }

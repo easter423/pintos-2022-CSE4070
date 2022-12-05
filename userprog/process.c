@@ -20,6 +20,8 @@
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
 #include "vm/page.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -89,7 +91,7 @@ if_.eflags = FLAG_IF | FLAG_MBS;
 success = load (file_name, &if_.eip, &if_.esp);
 
 /* If load failed, quit. */
-palloc_free_page (file_name);
+free_page (file_name);
 sema_up(&thread_current()->parent->sema3);
 if (!success) {
   thread_current()->failed=1;
@@ -540,25 +542,23 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint8_t *kpage;
+  struct page *kpage;
   bool success = false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
-  if (kpage != NULL) 
-    {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
-      if (success){
-        *esp = PHYS_BASE;
-        struct vm_entry *vme = malloc(sizeof(struct vm_entry));
-        vme->type = VM_ANON;
-        vme->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
-        vme->writable = true;
-        vme->is_loaded = true;
-        insert_vme(&thread_current()->vm, vme);
-      }
-      else
-        palloc_free_page (kpage);
-    }
+  kpage = alloc_page (PAL_USER | PAL_ZERO);
+  success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->kaddr, true);
+  if (success){
+    *esp = PHYS_BASE;
+    struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+    vme->type = VM_ANON;
+    vme->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
+    vme->writable = true;
+    vme->is_loaded = true;
+    kpage->vme = vme;
+    insert_vme(&thread_current()->vm, vme);
+  }
+  else
+    free_page (kpage);
   return success;
 }
 
@@ -584,15 +584,14 @@ install_page (void *upage, void *kpage, bool writable)
 
 bool handle_mm_fault(struct vm_entry *vme)
 {
-  uint8_t *kpage = palloc_get_page (PAL_USER);
-	if (kpage == NULL)
-		return false;
+  struct page *kpage = alloc_page (PAL_USER);
+  kpage->vme = vme;
 	switch(vme->type)
 	{
 		case VM_BIN:
-      if(!load_file (kpage, vme))
+      if(!load_file (kpage->kaddr, vme))
       {
-        palloc_free_page (kpage);
+        free_page (kpage->kaddr);
         return false;
       }
 			break;
@@ -601,9 +600,9 @@ bool handle_mm_fault(struct vm_entry *vme)
 		case VM_ANON:
 			break;
 	}
-	if (!install_page (vme->vaddr, kpage, vme->writable))
+	if (!install_page (vme->vaddr, kpage->kaddr, vme->writable))
 	{
-		palloc_free_page (kpage);
+		free_page (kpage->kaddr);
 		return false;
 	}
 	vme->is_loaded=true;

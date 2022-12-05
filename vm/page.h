@@ -2,10 +2,12 @@
 #define VM_PAGE_H
 
 #include <hash.h>
-#include "filesys/file.h"
+#include <list.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include "filesys/file.h"
+#include "threads/thread.h"
 
 #define VM_BIN 0
 #define VM_FILE 1
@@ -16,15 +18,21 @@ struct vm_entry{
     void *vaddr;
     bool writable;
     bool is_loaded;
-    struct file* file;
     uint32_t offset;
+    struct file* file;
     uint32_t read_bytes;
     uint32_t zero_bytes;
 
     uint32_t swap_slot;
 
-    struct list_elem mmap_elem;
     struct hash_elem elem;
+};
+
+struct page {
+    void *kaddr;
+    struct list_elem lru;
+    struct vm_entry *vme;
+    struct thread *thread;
 };
 
 void vm_init(struct hash *);
