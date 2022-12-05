@@ -16,6 +16,7 @@
 struct vm_entry{
     uint8_t type;
     void *vaddr;
+    bool pinned;
     bool writable;
     bool is_loaded;
     uint32_t offset;
@@ -41,5 +42,8 @@ bool delete_vme(struct hash *, struct vm_entry *);
 struct vm_entry *find_vme(void *);
 void vm_destroy(struct hash *);
 bool load_file(void *, struct vm_entry *);
+
+void pin_vme (void *, int);
+void unpin_vme (void *, int);
 
 #endif

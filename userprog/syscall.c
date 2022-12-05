@@ -250,6 +250,7 @@ int read(int fd, void *buffer, unsigned size)
 {
 	int ret=-1;
 	lock_acquire(&syn_lock);
+	pin_vme(buffer, size);
 	if(fd == 0)
 	{
 		unsigned i;
@@ -269,6 +270,7 @@ int read(int fd, void *buffer, unsigned size)
 		}
 		ret=file_read(fs, buffer, size);
 	}
+	unpin_vme(buffer, size);
 	lock_release(&syn_lock);
 	return ret;
 }
@@ -277,6 +279,7 @@ int write(int fd, const void *buffer, unsigned size)
 {
 	int ret=-1;
 	lock_acquire(&syn_lock);
+	pin_vme(buffer, size);
 	if(fd == 1)
 	{
 		putbuf(buffer, size);
@@ -291,6 +294,7 @@ int write(int fd, const void *buffer, unsigned size)
 		
 		ret= file_write(fs, buffer, size);
 	}
+	unpin_vme(buffer, size);
 	lock_release(&syn_lock);
 	return ret;
 }

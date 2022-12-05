@@ -503,6 +503,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       vme->is_loaded = false;
       vme->file = file;
       vme->offset = ofs;
+      vme->pinned = false;
       vme->read_bytes = page_read_bytes;
       vme->zero_bytes = page_zero_bytes;
       
@@ -554,6 +555,7 @@ setup_stack (void **esp)
     vme->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
     vme->writable = true;
     vme->is_loaded = true;
+    vme->pinned = false;
     kpage->vme = vme;
     insert_vme(&thread_current()->vm, vme);
   }
@@ -620,6 +622,7 @@ bool expand_stack(void *addr)
     vme->vaddr = pg_round_down(addr);
     vme->writable = true;
     vme->is_loaded = true;
+    vme->pinned = false;
     kpage->vme = vme;
     insert_vme(&thread_current()->vm, vme);
 

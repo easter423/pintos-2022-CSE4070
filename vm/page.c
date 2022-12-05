@@ -7,6 +7,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 
 static unsigned vm_hash_func (const struct hash_elem *e_, void *aux UNUSED)
 {
@@ -70,4 +71,24 @@ bool load_file(void *kaddr, struct vm_entry *vme)
       return false;
 	memset (kaddr + vme->read_bytes, 0, vme->zero_bytes);
 	return true;
+}
+
+void pin_vme (void *front, int size)
+{
+	for(void *addr = front; addr < front + size; addr += PGSIZE)
+	{
+		struct vm_entry *vme = find_vme(addr);
+		vme->pinned = true;
+		if(!vme->is_loaded)
+			handle_mm_fault(vme);
+	}
+}
+
+void unpin_vme (void *front, int size)
+{
+	for(void *addr = front; addr < front + size; addr += PGSIZE)
+	{
+		struct vm_entry *vme = find_vme(addr);
+		vme->pinned = false;
+	}
 }
