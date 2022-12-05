@@ -608,3 +608,34 @@ bool handle_mm_fault(struct vm_entry *vme)
 	vme->is_loaded=true;
 	return true;
 }
+
+bool expand_stack(void *addr)
+{
+  struct page *kpage;
+  bool success = false;
+  struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+
+  kpage = alloc_page (PAL_USER | PAL_ZERO);
+  if (vme){
+    vme->type = VM_ANON;
+    vme->vaddr = addr;
+    vme->writable = true;
+    vme->is_loaded = true;
+    kpage->vme = vme;
+    insert_vme(&thread_current()->vm, vme);
+
+    success = install_page (vme->vaddr, kpage->kaddr, vme->writable);
+    if (!success){
+      free_page(kpage->kaddr);
+		  free(vme);
+    }
+  }
+  return success;
+}
+
+bool verify_stack(void *esp, void *addr)
+{
+  printf("[esp=%p, addr=%p]\n");
+  printf("%d %d %d",PHYS_BASE - 8*1024*1024 <= addr, esp - 32 <= addr, addr < PHYS_BASE);
+  return PHYS_BASE - 8*1024*1024 <= addr && esp - 32 <= addr && addr < PHYS_BASE;
+}

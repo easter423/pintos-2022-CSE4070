@@ -11,6 +11,7 @@
 #include "filesys/filesys.h"
 #include "filesys/off_t.h"
 #include "threads/synch.h"
+#include "vm/page.h"
 
 struct lock syn_lock;
 
@@ -101,12 +102,20 @@ syscall_handler (struct intr_frame *f)
 
 }
 
-struct vm_entry *check_address(void *addr, void *esp UNUSED)
+struct vm_entry *check_address(void *addr, void *esp)
 {
 	if(!is_user_vaddr(addr)){
 		exit(-1);
 	}
-	return find_vme(addr);
+	struct vm_entry *vme = find_vme(addr);
+	return vme;
+	if (!vme){
+		if (!verify_stack(addr, esp))
+            exit(-1);
+         expand_stack(addr);
+		 vme = find_vme(addr);
+	}
+	return vme;
 }
 
 void check_user(int *args, int num)
