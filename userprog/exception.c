@@ -154,7 +154,7 @@ page_fault (struct intr_frame *f)
    if (not_present){
       struct vm_entry *vme = find_vme(fault_addr);
       if (!vme){
-         if (!verify_stack(fault_addr, f->esp))
+         if (!verify_stack(f->esp, fault_addr))
             exit(-1);
          expand_stack(fault_addr);
       }

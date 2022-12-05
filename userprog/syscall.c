@@ -117,7 +117,7 @@ struct vm_entry *check_address(void *addr, void *esp)
 	}
 	struct vm_entry *vme = find_vme(addr);
 	if (!vme){
-		if (!verify_stack(addr, esp))
+		if (!verify_stack(esp, addr))
             exit(-1);
          expand_stack(addr);
 		 vme = find_vme(addr);

@@ -637,5 +637,5 @@ bool expand_stack(void *addr)
 
 bool verify_stack(void *esp, void *addr)
 {
-  return PHYS_BASE - 8*1024*1024 <= addr && esp - 32 <= addr && addr < PHYS_BASE;
+  return (PHYS_BASE - 8*1024*1024 <= addr) && (esp - 32 <= addr) && (addr < PHYS_BASE);
 }
