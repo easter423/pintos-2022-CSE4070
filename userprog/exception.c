@@ -151,11 +151,12 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+  //printf("[(%lld)%p, %p]\n", page_fault_cnt, fault_addr, f->esp);
    if (not_present){
       struct vm_entry *vme = find_vme(fault_addr);
       if (!vme){
-         if (!verify_stack(f->esp, fault_addr))
-            exit(-1);
+         if (!verify_stack(f->esp, fault_addr)){
+            exit(-1);}
          expand_stack(fault_addr);
       }
       else if (!handle_mm_fault(vme))

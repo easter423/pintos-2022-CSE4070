@@ -80,13 +80,13 @@ void __free_page(struct page* page)
 
 void try_to_free_pages(enum palloc_flags flags UNUSED)
 {
+    move_lru_clock();
     struct page *pg = list_entry(lru_clock, struct page, lru);
     while (pagedir_is_accessed(pg->thread->pagedir, pg->vme->vaddr) || pg->vme->pinned){
         pagedir_set_accessed(pg->thread->pagedir, pg->vme->vaddr, false);
         move_lru_clock();
         pg = list_entry(lru_clock, struct page, lru);
     }
-
     struct page *target = pg;
     switch(target->vme->type)
     {

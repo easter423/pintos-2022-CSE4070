@@ -7,7 +7,7 @@
 
 void swap_init(void)
 {
-    swap_bitmap = bitmap_create(4*1024);
+    swap_bitmap = bitmap_create(8*1024);
 }
 
 void swap_in(size_t used_index, void* kaddr)

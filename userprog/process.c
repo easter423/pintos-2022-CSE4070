@@ -600,6 +600,7 @@ bool handle_mm_fault(struct vm_entry *vme)
 		case VM_FILE:
 			break;
 		case VM_ANON:
+      swap_in(vme->swap_slot, kpage->kaddr);
 			break;
 	}
 	if (!install_page (vme->vaddr, kpage->kaddr, vme->writable))
