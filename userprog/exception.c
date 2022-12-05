@@ -153,17 +153,12 @@ page_fault (struct intr_frame *f)
   user = (f->error_code & PF_U) != 0;
 
    if (not_present){
-      debug_backtrace_all();
-      printf ("Page fault at %p: %s error %s page in %s context.\n",
-            fault_addr,
-            not_present ? "not present" : "rights violation",
-            write ? "writing" : "reading",
-            user ? "user" : "kernel");
       struct vm_entry *vme = find_vme(fault_addr);
       if (!vme)
          exit(-1);
       if (!handle_mm_fault(vme)){
-         exit(-2);}
+         exit(-1);
+      }
    }
    else
       exit(-1);

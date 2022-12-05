@@ -4,6 +4,8 @@
 #include <hash.h>
 #include "filesys/file.h"
 #include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #define VM_BIN 0
 #define VM_FILE 1
@@ -15,11 +17,11 @@ struct vm_entry{
     bool writable;
     bool is_loaded;
     struct file* file;
-    size_t offset;
-    size_t read_bytes;
-    size_t zero_bytes;
+    uint32_t offset;
+    uint32_t read_bytes;
+    uint32_t zero_bytes;
 
-    size_t swap_slot;
+    uint32_t swap_slot;
 
     struct list_elem mmap_elem;
     struct hash_elem elem;

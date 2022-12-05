@@ -11,7 +11,7 @@
 static unsigned vm_hash_func (const struct hash_elem *e_, void *aux UNUSED)
 {
     struct vm_entry *e = hash_entry(e_, struct vm_entry, elem);
-    return hash_int((int)(e->vaddr));
+    return hash_int((unsigned)(e->vaddr));
 }
 
 static bool vm_less_func (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED)
@@ -34,8 +34,7 @@ void vm_init (struct hash *vm)
 
 bool insert_vme (struct hash *vm, struct vm_entry *vme)
 {
-    struct hash_elem *elem = hash_insert(vm, &vme->elem);
-    return (elem == NULL) ? true : false;
+    return (hash_insert(vm, &vme->elem) == NULL);
 }
 
 bool delete_vme (struct hash *vm, struct vm_entry *vme)
@@ -55,7 +54,7 @@ struct vm_entry *find_vme (void *vaddr)
     f.vaddr = pg_round_down(vaddr);
     struct hash_elem *e = hash_find(&thread_current()->vm, &f.elem);
 
-    return (e == NULL) ? NULL : hash_entry(e, struct vm_entry, elem);
+    return (e != NULL) ? hash_entry(e, struct vm_entry, elem) : NULL;
 }
 
 void vm_destroy (struct hash *vm)

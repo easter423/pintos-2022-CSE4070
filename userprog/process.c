@@ -405,7 +405,7 @@ for(i=0, token = strtok_r(file_name_, " ", &save_ptr); token != NULL;
 
   done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  //file_close (file);
   free(argv);
   free(file_name_);
   return success;
