@@ -614,11 +614,10 @@ bool expand_stack(void *addr)
   struct page *kpage;
   bool success = false;
   struct vm_entry *vme = malloc(sizeof(struct vm_entry));
-
   kpage = alloc_page (PAL_USER | PAL_ZERO);
   if (vme){
     vme->type = VM_ANON;
-    vme->vaddr = addr;
+    vme->vaddr = pg_round_down(addr);
     vme->writable = true;
     vme->is_loaded = true;
     kpage->vme = vme;
@@ -635,7 +634,5 @@ bool expand_stack(void *addr)
 
 bool verify_stack(void *esp, void *addr)
 {
-  printf("[esp=%p, addr=%p]\n");
-  printf("%d %d %d",PHYS_BASE - 8*1024*1024 <= addr, esp - 32 <= addr, addr < PHYS_BASE);
   return PHYS_BASE - 8*1024*1024 <= addr && esp - 32 <= addr && addr < PHYS_BASE;
 }

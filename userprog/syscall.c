@@ -1,5 +1,6 @@
 #include "userprog/syscall.h"
 #include <stdio.h>
+#include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
@@ -50,18 +51,18 @@ syscall_handler (struct intr_frame *f)
 		case SYS_CREATE:
 			check_user(args, 2);
 			check_valid_string((void *)args[1], f->esp);
-			f->eax = create ((const char *)args[1], (unsigned)args[2]);
+			f->eax = create ((char *)args[1], (unsigned)args[2]);
       		break;
 		case SYS_REMOVE:
 			check_user(args, 1);
 			check_valid_string((void *)args[1], f->esp);
-			f->eax = remove ((const char *)args[1]);
+			f->eax = remove ((char *)args[1]);
 			break;
 		case SYS_OPEN:
 			check_user(args, 1);
 			check_valid_string((void *)args[1], f->esp);
 			lock_acquire(&syn_lock);
-			f->eax = open ((const char *)args[1]);
+			f->eax = open ((char *)args[1]);
 			lock_release(&syn_lock);
 			break;
 		case SYS_FILESIZE:
@@ -70,12 +71,12 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_READ:
 			check_user(args, 3);
-			check_valid_buffer((void *)args[2], (unsigned)args[3], f->esp, true);
+			check_valid_strlen((void *)args[2], (unsigned)args[3], f->esp);
 			f->eax = read(args[1], (void *)args[2], (unsigned)args[3]);
 			break;
 		case SYS_WRITE:
 			check_user(args, 3);
-			check_valid_string((void *)args[2], f->esp);
+			check_valid_strlen((void *)args[2], (unsigned)args[3], f->esp);
 			f->eax = write(args[1], (void *)args[2], (unsigned)args[3]);
 			break;
 		case SYS_SEEK:
@@ -102,13 +103,19 @@ syscall_handler (struct intr_frame *f)
 
 }
 
+void check_user(int *args, int num)
+{
+	for(int i = 1; i < num + 1; i++)
+		check_address((void *)&args[i], (void *)args);
+}
+
 struct vm_entry *check_address(void *addr, void *esp)
 {
-	if(!is_user_vaddr(addr)){
+	//printf("[%p, %p]",addr, esp);
+	if(addr < 0x8048000 || 0xc0000000 <= addr) {
 		exit(-1);
 	}
 	struct vm_entry *vme = find_vme(addr);
-	return vme;
 	if (!vme){
 		if (!verify_stack(addr, esp))
             exit(-1);
@@ -116,12 +123,6 @@ struct vm_entry *check_address(void *addr, void *esp)
 		 vme = find_vme(addr);
 	}
 	return vme;
-}
-
-void check_user(int *args, int num)
-{
-	for(int i = 0; i < num + 1; i++)
-		check_address((void *)args[i], (void *)args);
 }
 
 void check_valid_buffer (void *buffer, unsigned size, void *esp, bool to_write UNUSED)
@@ -134,11 +135,27 @@ void check_valid_buffer (void *buffer, unsigned size, void *esp, bool to_write U
 	}
 }
 
-void check_valid_string (const void *str, void *esp)
+void check_valid_string (void *str, void *esp)
 {
 	struct vm_entry *vme = check_address(str, esp);
 	if(!vme)
 		exit(-1);
+	int size = strlen(str);
+	for(void *addr = pg_round_down(str); addr < str + size; addr += PGSIZE)
+	{
+		vme = check_address(addr, esp);
+		if (!vme)
+			exit(-1);
+	}
+}
+
+void check_valid_strlen (void *str, unsigned size, void *esp)
+{
+	for (int i = 0; i < size; i++){
+		struct vm_entry *vme = check_address(str+i, esp);
+		if(!vme)
+			exit(-1);
+	}
 }
 
 void halt(void)

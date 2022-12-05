@@ -158,7 +158,7 @@ page_fault (struct intr_frame *f)
             exit(-1);
          expand_stack(fault_addr);
       }
-      if (!handle_mm_fault(vme))
+      else if (!handle_mm_fault(vme))
          exit(-1);
    }
    else
