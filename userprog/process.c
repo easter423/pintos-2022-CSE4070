@@ -148,6 +148,7 @@ uint32_t *pd;
 vm_destroy(&cur->vm);
 /* Destroy the current process's page directory and switch back
 	 to the kernel-only page directory. */
+spt_destroy(&cur->spage);
 pd = cur->pagedir;
 if (pd != NULL) 
 	{
