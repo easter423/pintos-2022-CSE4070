@@ -1,49 +1,94 @@
-#include "page.h"
-#include "userprog/pagedir.h"
+#include <string.h>
+#include "vm/page.h"
+#include "vm/frame.h"
+#include "vm/swap.h"
+#include "filesys/file.h"
+#include "threads/vaddr.h"
+#include "threads/malloc.h"
 #include "threads/thread.h"
-#include "threads/pte.h"
+#include "userprog/pagedir.h"
+#include "userprog/process.h"
 
-static unsigned hash_hash(const struct hash_elem *e, void *aux UNUSED){
-    uint32_t va = (uint32_t)hash_entry(e, struct spt_entry, elem)->vaddr;
-    return hash_int(va);
+static unsigned vm_hash_func (const struct hash_elem *e_, void *aux UNUSED)
+{
+    struct vm_entry *e = hash_entry(e_, struct vm_entry, elem);
+    return hash_int((unsigned)(e->vaddr));
 }
 
-static bool hash_less(const struct hash_elem *a, const struct hash_elem *b, void *aux UNUSED){
-    uint32_t vaa = (uint32_t)hash_entry(a, struct spt_entry, elem)->vaddr;
-    uint32_t vab = (uint32_t)hash_entry(b, struct spt_entry, elem)->vaddr;
-    return vaa < vab;
+static bool vm_less_func (const struct hash_elem *a_, const struct hash_elem *b_, void *aux UNUSED)
+{
+    struct vm_entry *a = hash_entry(a_, struct vm_entry, elem);
+    struct vm_entry *b = hash_entry(b_, struct vm_entry, elem);
+    return a->vaddr < b->vaddr;
 }
 
-static void hash_hash_destroy(struct hash_elem *e, void *aux UNUSED){
-    struct spt_entry *page = hash_entry(e, struct page, elem);
-    free(page);
+static void vm_destroy_func (struct hash_elem *e, void *aux UNUSED)
+{
+	struct vm_entry *vme = hash_entry(e, struct vm_entry, elem);
+    free_page(pagedir_get_page(thread_current()->pagedir, vme->vaddr));
+	free(vme);
 }
 
-void spt_init(struct hash *spt){
-    hash_init(&spt, &hash_hash, &hash_less, NULL);
+void vm_init (struct hash *vm)
+{
+    hash_init(vm, vm_hash_func, vm_less_func, NULL);
 }
 
-bool pg_insert(struct hash *spage, struct spt_entry *e){
-    return hash_insert(spage, &e->elem) == NULL ? true : false;
+bool insert_vme (struct hash *vm, struct vm_entry *vme)
+{
+    return (hash_insert(vm, &vme->elem) == NULL);
 }
 
-bool pg_delete(struct hash *spage, struct spt_entry *e){
-    return hash_delete(spage, &e->elem) != NULL ? true : false;
+bool delete_vme (struct hash *vm, struct vm_entry *vme)
+{
+    struct hash_elem *elem = hash_delete(vm, &vme->elem);
+    if (elem != NULL){
+        free_page(pagedir_get_page(thread_current()->pagedir, vme->vaddr));
+        free(vme);
+        return true;
+    }
+    return false;
 }
 
-struct spt_entry *find_page(struct hash *spage, void *vaddr){
-    struct spt_entry page;
-    struct hash_elem *e;
+struct vm_entry *find_vme (void *vaddr)
+{
+    struct vm_entry f;
 
-    page.vaddr = pg_round_down(vaddr);
-    e = hash_find(spage, &page.elem);
-    return e != NULL ? hash_entry(e, struct spt_entry, elem) : NULL;
+    f.vaddr = pg_round_down(vaddr);
+    struct hash_elem *e = hash_find(&thread_current()->vm, &f.elem);
+
+    return (e != NULL) ? hash_entry(e, struct vm_entry, elem) : NULL;
 }
 
-void spt_destroy(struct hash *spage){
-    hash_destroy(spage, hash_hash_destroy);
+void vm_destroy (struct hash *vm)
+{
+	hash_destroy (vm, vm_destroy_func);
 }
 
-bool handle_mm_fault(struct spt_entry *e){
+bool load_file(void *kaddr, struct vm_entry *vme)
+{
+	if (file_read_at (vme->file, kaddr, vme->read_bytes, vme->offset) != (int) vme->read_bytes)
+      return false;
+	memset (kaddr + vme->read_bytes, 0, vme->zero_bytes);
+	return true;
+}
 
+void pin_vme (void *front, int size)
+{
+	for(void *addr = front; addr < front + size; addr += PGSIZE)
+	{
+		struct vm_entry *vme = find_vme(addr);
+		vme->pinned = true;
+		if(!vme->is_loaded)
+			handle_mm_fault(vme);
+	}
+}
+
+void unpin_vme (void *front, int size)
+{
+	for(void *addr = front; addr < front + size; addr += PGSIZE)
+	{
+		struct vm_entry *vme = find_vme(addr);
+		vme->pinned = false;
+	}
 }

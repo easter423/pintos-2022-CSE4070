@@ -2,15 +2,12 @@
 #define THREADS_THREAD_H
 
 #include <debug.h>
+#include <hash.h>
 #include <list.h>
 #include <stdint.h>
 #include "threads/synch.h"
 #include "filesys/file.h"
-#include <hash.h>
-
-#ifndef USERPROG
-extern bool thread_prior_aging;
-#endif
+#include "threads/malloc.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -115,13 +112,12 @@ struct thread
     int exit_status;
     int failed;
     struct file* fdt[131];
-
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
-  
-    struct hash spage;
+    
+    struct hash vm;
   };
 
 /* If false (default), use round-robin scheduler.
