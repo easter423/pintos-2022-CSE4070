@@ -30,6 +30,7 @@ syscall_handler (struct intr_frame *f)
 {
 	int *args = (int *)f->esp;
 	check_address((void*) args, f->esp);
+	//printf("<%d>",args[0]);
 	switch(args[0])
 	{
 		case SYS_HALT:
@@ -61,9 +62,8 @@ syscall_handler (struct intr_frame *f)
 		case SYS_OPEN:
 			check_user(args, 1);
 			check_valid_string((void *)args[1], f->esp);
-			lock_acquire(&syn_lock);
 			f->eax = open ((char *)args[1]);
-			lock_release(&syn_lock);
+			//printf("{open: %d}",f->eax);
 			break;
 		case SYS_FILESIZE:
 			check_user(args, 1);
@@ -189,11 +189,15 @@ int wait(pid_t pid)
 
 bool create (const char *file, unsigned initial_size)
 {
+	lock_acquire(&syn_lock);
 	if (!file)
 	{
 		exit(-1);
 	}
-	return filesys_create(file, initial_size);
+	//printf("(create: %s)",file);
+	bool temp = filesys_create(file, initial_size);
+	lock_release(&syn_lock);
+	return temp;
 }
 
 bool remove (const char *file)
@@ -207,11 +211,14 @@ bool remove (const char *file)
 
 int open (const char *file)
 {
+	lock_acquire(&syn_lock);
 	if (!file)
 	{
+		lock_release(&syn_lock);
 		exit(-1);
 	}
 	struct file *fs = filesys_open(file);
+	//printf("[%s:%p]",file,fs);
 	if(fs)
 	{
 		int i=3;
@@ -228,11 +235,13 @@ int open (const char *file)
 					j++;
 				}
 				thread_current()->fdt[i]=fs;
+				lock_release(&syn_lock);
 				return i;
 			}
 			i++;
 		}
 	}
+	lock_release(&syn_lock);
 	return -1;
 }
 
@@ -321,13 +330,14 @@ unsigned tell (int fd)
 
 void close (int fd)
 {
+	//printf("{close: %d}",fd);
 	struct file *fs=thread_current()->fdt[fd];
 	if (!fs)
 	{
 		exit(-1);
 	}
-	thread_current()->fdt[fd]=NULL;
 	file_close(fs);
+	thread_current()->fdt[fd]=NULL;
 }
 
 int fibonacci(int n)
