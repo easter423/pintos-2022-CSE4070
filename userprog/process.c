@@ -156,6 +156,7 @@ for (struct list_elem *e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap
 }
 /* Destroy the current process's page directory and switch back
 	 to the kernel-only page directory. */
+spt_destroy(&cur->spage);
 pd = cur->pagedir;
 if (pd != NULL) 
 	{
