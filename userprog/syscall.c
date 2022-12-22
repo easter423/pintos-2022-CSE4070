@@ -99,6 +99,14 @@ syscall_handler (struct intr_frame *f)
 			check_user(args, 4);
 			f->eax = max_of_four_int(args[1], args[2], args[3], args[4]);
 			break;
+		case SYS_MMAP:
+			check_user(args, 2);
+			f->eax = mmap(args[1], (void*)args[2]);
+			break;
+		case SYS_MUNMAP:
+			check_user(args, 1);
+			munmap(args[1]);
+			break;
 	}
 
 }
@@ -363,4 +371,90 @@ int max_of_four_int(int a, int b, int c, int d)
 	if(d>a)
 		a=d;
 	return a;
+}
+
+int mmap(int fd, void *addr)
+{
+	int mapid;
+	struct mmap_file *m_file;
+
+	if(thread_current()->fdt[fd]==NULL || !is_user_vaddr(addr) || pg_ofs(addr) !=0 || !addr )
+		return -1;
+
+	if(find_vme(addr))
+		return -1;
+
+	struct file *reopened_file = file_reopen(thread_current()->fdt[fd]);
+
+	mapid=thread_current()->next_mmapid++;
+
+	m_file=malloc(sizeof(struct mmap_file));
+	if(m_file==NULL)
+		return -1;
+	m_file->mapid = mapid;
+	m_file->file = reopened_file;
+	list_push_back(&(thread_current()->mmap_list), &(m_file->elem));
+	list_init(&(m_file->vme_list));
+
+	int read_bytes = file_length(m_file->file);
+	int ofs = 0;
+	while (read_bytes > 0)
+	{
+		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+		size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+		struct vm_entry *vme = malloc(sizeof(struct vm_entry));
+		vme->type = VM_FILE;
+		vme->vaddr = addr;
+		vme->writable = true;
+		vme->is_loaded = false;
+		vme->file = m_file->file;
+		vme->offset = ofs;
+		vme->read_bytes =page_read_bytes;
+		vme->zero_bytes =page_zero_bytes;
+		list_push_back(&(m_file->vme_list), &vme->mmap_elem);
+		insert_vme(&thread_current()->vm, vme);
+
+		/* Advance. */
+		read_bytes -= page_read_bytes;
+		ofs += page_read_bytes;
+		addr += PGSIZE;
+	}
+
+	return mapid;
+}
+
+void munmap(int mapid)
+{
+
+	struct thread * cur= thread_current();
+
+
+	if(mapid==0)
+	{
+		struct list_elem *e;
+		for (e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap_list);) {
+			struct list_elem *next_e = list_next(e);
+
+			struct mmap_file *m_file = list_entry(e, struct mmap_file, elem);
+			do_munmap(m_file);
+			e = next_e;
+		}
+	}
+	else {
+		struct mmap_file *m_file=NULL;
+		struct list_elem *e;
+		for (e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap_list); e = list_next(e)) {
+			struct mmap_file *check_mmap_file = list_entry(e, struct mmap_file, elem);
+			if (check_mmap_file->mapid == mapid) {
+				m_file = check_mmap_file;
+				break;
+			}
+		}
+		//mapid에 해당하는 mmap_file을 못찾은 경우
+		if (m_file == NULL)
+			return;
+
+		do_munmap(m_file);
+	}
 }

@@ -20,5 +20,5 @@ struct page* alloc_page(enum palloc_flags);
 void free_page(void*);
 void __free_page(struct page*);
 
-void try_to_free_pages(enum palloc_flags);
+void try_to_free_pages(void);
 #endif

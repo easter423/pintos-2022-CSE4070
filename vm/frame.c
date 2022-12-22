@@ -38,7 +38,7 @@ struct page* alloc_page(enum palloc_flags flags)
     
     uint8_t *kpage = palloc_get_page(flags);
     while (!kpage){
-        try_to_free_pages(flags);
+        try_to_free_pages();
         kpage = palloc_get_page(flags);
     }
 
@@ -78,7 +78,7 @@ void __free_page(struct page* page)
     free(page);
 }
 
-void try_to_free_pages(enum palloc_flags flags UNUSED)
+void try_to_free_pages(void)
 {
     move_lru_clock();
     struct page *pg = list_entry(lru_clock, struct page, lru);
@@ -98,6 +98,8 @@ void try_to_free_pages(enum palloc_flags flags UNUSED)
             }
             break;
         case VM_FILE:
+            if(pagedir_is_dirty(target->thread->pagedir, target->vme->vaddr))
+                file_write_at(target->vme->file, target->vme->vaddr, target->vme->read_bytes, target->vme->offset);
             break;
         case VM_ANON:
             target->vme->swap_slot = swap_out(target->kaddr);

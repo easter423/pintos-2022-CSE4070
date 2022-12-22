@@ -27,6 +27,7 @@ struct vm_entry{
     uint32_t swap_slot;
 
     struct hash_elem elem;
+    struct list_elem mmap_elem;
 };
 
 struct page {
@@ -45,5 +46,12 @@ bool load_file(void *, struct vm_entry *);
 
 void pin_vme (void *, int);
 void unpin_vme (void *, int);
+
+struct mmap_file{
+    int mapid;
+    struct file * file;
+    struct list_elem elem;
+    struct list vme_list;
+};
 
 #endif

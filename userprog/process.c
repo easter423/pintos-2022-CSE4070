@@ -146,6 +146,14 @@ struct thread *cur = thread_current ();
 uint32_t *pd;
 
 vm_destroy(&cur->vm);
+
+for (struct list_elem *e = list_begin(&cur->mmap_list); e != list_end(&cur->mmap_list); ) {
+  struct list_elem *next_e = list_next(e);
+  struct mmap_file *m_file = list_entry(e, struct mmap_file, elem);
+  do_munmap(m_file);
+
+  e = next_e;
+}
 /* Destroy the current process's page directory and switch back
 	 to the kernel-only page directory. */
 pd = cur->pagedir;
@@ -598,6 +606,11 @@ bool handle_mm_fault(struct vm_entry *vme)
       }
 			break;
 		case VM_FILE:
+      if(!load_file(kpage, vme))
+      {
+        free_page(kpage);
+        return false;
+      }
 			break;
 		case VM_ANON:
       swap_in(vme->swap_slot, kpage->kaddr);
@@ -639,4 +652,27 @@ bool expand_stack(void *addr)
 bool verify_stack(void *esp, void *addr)
 {
   return (PHYS_BASE - 8*1024*1024 <= addr) && (esp - 32 <= addr) && (addr < PHYS_BASE);
+}
+
+void do_munmap(struct mmap_file* mmap_file)
+{
+	struct list_elem *e;
+	struct file *file;
+	for(e = list_begin(&mmap_file->vme_list); e != list_end(&mmap_file->vme_list); )
+	{
+		struct list_elem *next_e=list_next(e);
+
+		struct vm_entry *vme=list_entry(e, struct vm_entry, mmap_elem);
+		file=vme->file;
+		if(vme->is_loaded && pagedir_is_dirty(thread_current()->pagedir, vme->vaddr)) {
+			file_write_at(vme->file, vme->vaddr, vme->read_bytes, vme->offset);
+    }
+		list_remove(e);
+    free_page(pagedir_get_page(thread_current()->pagedir,vme->vaddr));
+		delete_vme(&thread_current()->vm, vme);
+		e = next_e;
+	}
+
+	list_remove(&mmap_file->elem);
+	free(mmap_file);
 }
