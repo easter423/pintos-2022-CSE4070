@@ -13,7 +13,7 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 #define NUM_DIRECT 124
-#define NUM_INDIRECT (off_t)(BLOCK_SECTOR_SIZE / sizeof (block_sector_t))
+#define NUM_INDIRECT 128
 
 enum direct_mode{
   DIRECT,
@@ -68,7 +68,7 @@ static bool get_disk_inode(const struct inode *, struct inode_disk*);
 static void locate_byte (off_t, struct location *);
 static bool register_sector(struct inode_disk *, block_sector_t, struct location);
 static block_sector_t byte_to_sector(const struct inode_disk *, off_t);
-bool inode_update_file_length(struct inode_disk*, off_t, off_t);
+static bool inode_update_file_length(struct inode_disk*, off_t, off_t);
 static void free_inode_sectors(struct inode_disk*);
 
 /* Returns the block device sector that contains byte offset POS
@@ -495,8 +495,8 @@ static bool register_sector(struct inode_disk *inode_disk, block_sector_t sector
 static block_sector_t byte_to_sector(const struct inode_disk *inode_disk, off_t pos)
 {
   if (inode_disk->length <= pos) return -1;
-  struct inode_indirect_block indirect_block;
 
+  struct inode_indirect_block indirect_block;
   struct location loc;
   locate_byte(pos, &loc);
 
@@ -522,7 +522,7 @@ static block_sector_t byte_to_sector(const struct inode_disk *inode_disk, off_t 
   }
 }
 
-bool inode_update_file_length(struct inode_disk* inode_disk, off_t old_length, off_t new_length)
+static bool inode_update_file_length(struct inode_disk* inode_disk, off_t old_length, off_t new_length)
 {
   static char zeros[BLOCK_SECTOR_SIZE];
   if(old_length > new_length) return false;   //invalid
