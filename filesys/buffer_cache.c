@@ -67,12 +67,10 @@ void buffer_cache_write(block_sector_t sector, void *buffer, off_t offset, int c
     struct buffer_cache_entry *entry = buffer_cache_lookup(sector);
     if(!entry){
         entry = buffer_cache_select_victim();
-
         buffer_cache_flush_entry(entry);
         entry->valid_bit = true;
         entry->disk_sector = sector;
         lock_release(&buffer_cache_lock);
-
         block_read(fs_device, sector, entry->buffer);
     }
     entry->reference_bit = true;
@@ -102,6 +100,9 @@ struct buffer_cache_entry *buffer_cache_lookup(block_sector_t sector)
 struct buffer_cache_entry *buffer_cache_select_victim(void)
 {
     while(true){
+        if(lru == cache + NUM_CACHE){
+            lru = cache;
+        }
         lock_acquire(&lru->entry_lock);
         if(!(lru->valid_bit && lru->reference_bit))
             return lru++;
@@ -109,9 +110,6 @@ struct buffer_cache_entry *buffer_cache_select_victim(void)
         lock_release(&lru->entry_lock);
 
         lru++;
-        if(lru == cache + NUM_CACHE){
-            lru = cache;
-        }
     }
 }
 

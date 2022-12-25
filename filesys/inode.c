@@ -106,21 +106,17 @@ inode_create (block_sector_t sector, off_t length)
 {
   struct inode_disk *disk_inode = NULL;
   bool success = false;
-
   ASSERT (length >= 0);
 
   /* If this assertion fails, the inode structure is not exactly
      one sector in size, and you should fix that. */
   ASSERT (sizeof *disk_inode == BLOCK_SECTOR_SIZE);
-
   disk_inode = calloc (1, sizeof *disk_inode);
   if (disk_inode != NULL)
-    {
       //size_t sectors = bytes_to_sectors (length);
       memset(disk_inode, -1, sizeof(struct inode_disk));
       disk_inode->length = 0;
       disk_inode->magic = INODE_MAGIC;
-      
       if(!inode_update_file_length(disk_inode, disk_inode->length, length)){
         free(disk_inode); return success;
       }
@@ -140,7 +136,6 @@ inode_create (block_sector_t sector, off_t length)
       //   } 
       free (disk_inode);
       success = true;
-    }
   return success;
 }
 
