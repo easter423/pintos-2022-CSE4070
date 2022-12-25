@@ -10,6 +10,8 @@
 #include "threads/vaddr.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include "filesys/directory.h"
+#include "filesys/inode.h"
 #include "filesys/off_t.h"
 #include "threads/synch.h"
 #include "vm/page.h"
@@ -90,6 +92,26 @@ syscall_handler (struct intr_frame *f)
 		case SYS_CLOSE:
 			check_user(args, 1);
 			close (args[1]);
+			break;
+		case SYS_ISDIR:
+			check_user(args, 1);
+			f->eax = isdir (args[1]);
+			break;
+		case SYS_CHDIR:
+			check_user(args, 1);
+			f->eax = chdir ((char*)args[1]);
+			break;
+		case SYS_MKDIR:
+			check_user(args, 1);
+			f->eax = mkdir ((char*)args[1]);
+			break;
+		case SYS_READDIR:
+			check_user(args, 2);
+			f->eax = readdir (args[1], (char*)args[2]);
+			break;
+		case SYS_INUMBER:
+			check_user(args, 1);
+			f->eax = mkdir ((char*)args[1]);
 			break;
 		case SYS_FIBO:
 			check_user(args, 1);
@@ -338,6 +360,67 @@ void close (int fd)
 	}
 	file_close(fs);
 	thread_current()->fdt[fd]=NULL;
+}
+
+bool isdir(int fd)
+{
+	struct file *fs = thread_current()->fdt[fd];
+	if (!fs)
+	{
+		exit(-1);
+	}
+	return inode_is_dir (file_get_inode(fs));
+}
+
+bool chdir(const char *dir)
+{
+	char name[MAX_PATH_LEN + 1];
+	strlcpy(name, dir, MAX_PATH_LEN);
+	strlcat(name, "\0", MAX_PATH_LEN);
+	char cp_name[MAX_PATH_LEN + 1];
+	struct dir *ch_dir = parse_path(name, cp_name);
+	if (ch_dir == NULL) return false;
+	dir_close(thread_current()->cur_dir);
+	thread_current()->cur_dir = ch_dir;
+	return true;
+}
+
+bool mkdir(const char *dir)
+{
+	return filesys_create_dir(dir);
+}
+
+bool readdir(int fd, char *name)
+{
+	struct file *fs=thread_current()->fdt[fd];
+	if (!fs)
+	{
+		exit(-1);
+	}
+	struct inode *id = file_get_inode(fs);
+	if(!id) return false;
+	if(!inode_is_dir(id)) return false;
+
+	struct dir *dir = dir_open(id);
+	if(!dir) return false;
+	off_t *fs_next = (off_t*)fs + 1;
+	for (int i=0;i<=*fs_next;i++){
+		if(!dir_readdir(dir, name)){
+			return false;
+		}
+	}
+	(*fs_next)++;
+	return true;
+}
+
+int inumber(int fd)
+{
+	struct file *fs=thread_current()->fdt[fd];
+	if (!fs)
+	{
+		exit(-1);
+	}
+	return inode_get_inumber(file_get_inode(fs));
 }
 
 int fibonacci(int n)

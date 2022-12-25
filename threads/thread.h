@@ -114,6 +114,8 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
     
     struct hash vm;
+
+    struct dir *cur_dir;
   };
 
 /* If false (default), use round-robin scheduler.
