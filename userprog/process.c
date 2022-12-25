@@ -288,7 +288,6 @@ for(i=0, token = strtok_r(file_name_, " ", &save_ptr); token != NULL;
 {
 	argv[i++] = token;
 }
-
   /* Open executable file. */
  file = filesys_open (file_name_);
   if (file == NULL) 

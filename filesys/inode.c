@@ -121,10 +121,8 @@ inode_create (block_sector_t sector, off_t length)
       disk_inode->length = 0;
       disk_inode->magic = INODE_MAGIC;
       
-      if(length>0){
-        if(!inode_update_file_length(disk_inode, disk_inode->length, length)){
-          free(disk_inode); return success;
-        }
+      if(!inode_update_file_length(disk_inode, disk_inode->length, length)){
+        free(disk_inode); return success;
       }
       buffer_cache_write(sector, disk_inode, (off_t)0, BLOCK_SECTOR_SIZE, 0);
       // if (free_map_allocate (sectors, &disk_inode->start)) 
@@ -263,7 +261,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       lock_release(&inode->inode_lock);
 
       int sector_ofs = offset % BLOCK_SECTOR_SIZE;
-
       /* Bytes left in inode, bytes left in sector, lesser of the two. */
       off_t inode_left = inode_length(inode) - offset;
       int sector_left = BLOCK_SECTOR_SIZE - sector_ofs;
@@ -433,9 +430,10 @@ static void locate_byte (off_t pos, struct location *loc)
   }
   else if(pos < NUM_DIRECT + NUM_INDIRECT){
     loc->directness = INDIRECT;
-    loc->indirect_idx = pos;
+    loc->indirect_idx = pos - NUM_DIRECT;
   }
   else if(pos < NUM_DIRECT + NUM_INDIRECT + NUM_INDIRECT*NUM_INDIRECT){
+    pos -= (NUM_DIRECT + NUM_INDIRECT);
     loc->directness = DOUBLE_INDIRECT;
     loc->indirect_idx = pos % NUM_INDIRECT;
     loc->double_indirect_idx = pos / NUM_INDIRECT; 

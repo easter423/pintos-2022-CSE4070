@@ -18,6 +18,7 @@ static void do_format (void);
 void
 filesys_init (bool format) 
 {
+  printf("[init]\n");
   fs_device = block_get_role (BLOCK_FILESYS);
   if (fs_device == NULL)
     PANIC ("No file system device found, can't initialize file system.");
@@ -37,6 +38,7 @@ filesys_init (bool format)
 void
 filesys_done (void) 
 {
+  printf("[done]\n");
   free_map_close ();
   buffer_cache_terminate ();
 }
@@ -47,6 +49,7 @@ filesys_done (void)
 bool
 filesys_create (const char *name, off_t initial_size) 
 {
+  printf("[create %s]\n",name);
   block_sector_t inode_sector = 0;
   struct dir *dir = dir_open_root ();
   bool success = (dir != NULL
@@ -68,6 +71,7 @@ filesys_create (const char *name, off_t initial_size)
 struct file *
 filesys_open (const char *name)
 {
+  printf("[open %s]\n",name);
   struct dir *dir = dir_open_root ();
   struct inode *inode = NULL;
 
@@ -85,6 +89,7 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
+  printf("[remove %s]\n",name);
   struct dir *dir = dir_open_root ();
   bool success = dir != NULL && dir_remove (dir, name);
   dir_close (dir); 

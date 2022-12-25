@@ -1,4 +1,5 @@
 #include <string.h>
+#include <debug.h>
 #include "filesys/filesys.h"
 #include "filesys/buffer_cache.h"
 
@@ -16,6 +17,7 @@ void buffer_cache_init(void)
     void *buffer = buffer_cache;
     for(struct buffer_cache_entry *entry = cache; entry < cache + NUM_CACHE; entry++){
         memset(entry, 0, sizeof(struct buffer_cache_entry));
+        entry->valid_bit = false;
         entry->buffer = buffer;
         lock_init(&entry->entry_lock);
         buffer += BLOCK_SECTOR_SIZE;
@@ -49,6 +51,13 @@ void buffer_cache_read(block_sector_t sector, void *buffer, off_t offset, int ch
     }
     entry->reference_bit = true;
     memcpy(buffer + offset, entry->buffer + sector_ofs, chunk_size);
+    // if(chunk_size!=512){
+    //     printf("-------------\n");
+    //     printf("(%d, %d)",chunk_size, sector_ofs);
+    //     printf("{w_sector: %d, offset:%d, sector_ofs:%d}\n", sector, offset, sector_ofs);
+    //     hex_dump(entry->buffer, entry->buffer, chunk_size+ sector_ofs, true);
+    //     printf("-------------\n");
+    // }
 
     lock_release(&entry->entry_lock);
 }
@@ -68,6 +77,10 @@ void buffer_cache_write(block_sector_t sector, void *buffer, off_t offset, int c
     }
     entry->reference_bit = true;
     entry->dirty_bit = true;
+    //printf("-------------\n");
+    //printf("{w_sector: %d, offset: %d}\n", sector, offset);
+    //hex_dump(buffer, buffer, chunk_size, true);
+    //printf("-------------\n");
     memcpy(entry->buffer + sector_ofs, buffer + offset, chunk_size);
     lock_release(&entry->entry_lock);
 }
