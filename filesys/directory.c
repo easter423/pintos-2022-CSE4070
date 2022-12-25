@@ -26,7 +26,7 @@ struct dir_entry
 bool
 dir_create (block_sector_t sector, size_t entry_cnt)
 {
-  return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
+  return inode_create (sector, entry_cnt * sizeof (struct dir_entry), 1);
 }
 
 /* Opens and returns the directory for the given INODE, of which
@@ -161,7 +161,8 @@ dir_add (struct dir *dir, const char *name, block_sector_t inode_sector)
      current end-of-file.
      
      inode_read_at() will only return a short read at end of file.
-     Otherwise, we'd need to verify that we didn't get a short
+     Otherwise, we'd need to verify that we didn'
+     get a short
      read due to something intermittent such as low memory. */
   for (ofs = 0; inode_read_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
        ofs += sizeof e) 
@@ -191,6 +192,12 @@ dir_remove (struct dir *dir, const char *name)
 
   ASSERT (dir != NULL);
   ASSERT (name != NULL);
+
+  if(!strcmp(name, "."))
+    return false;
+
+  if(!strcmp(name, ".."))
+    return false;
 
   /* Find directory entry. */
   if (!lookup (dir, name, &e, &ofs))

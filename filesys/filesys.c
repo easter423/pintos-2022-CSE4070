@@ -7,6 +7,7 @@
 #include "filesys/inode.h"
 #include "filesys/directory.h"
 #include "filesys/buffer_cache.h"
+#include "threads/thread.h"
 
 /* Partition that contains the file system. */
 struct block *fs_device;
@@ -30,6 +31,8 @@ filesys_init (bool format)
     do_format ();
 
   free_map_open ();
+
+  thread_current()->cur_dir = dir_open_root();
 }
 
 /* Shuts down the file system module, writing any unwritten data
@@ -48,11 +51,12 @@ bool
 filesys_create (const char *name, off_t initial_size) 
 {
   block_sector_t inode_sector = 0;
-  struct dir *dir = dir_open_root ();
+  char cp_name[MAX_PATH_LEN + 1];
+  struct dir *dir = parse_path(name, cp_name);
   bool success = (dir != NULL
                   && free_map_allocate (1, &inode_sector)
-                  && inode_create (inode_sector, initial_size)
-                  && dir_add (dir, name, inode_sector));
+                  && inode_create (inode_sector, initial_size, 0)
+                  && dir_add (dir, cp_name, inode_sector));
   if (!success && inode_sector != 0) 
     free_map_release (inode_sector, 1);
   dir_close (dir);
@@ -67,11 +71,12 @@ filesys_create (const char *name, off_t initial_size)
 struct file *
 filesys_open (const char *name)
 {
-  struct dir *dir = dir_open_root ();
+  char cp_name[MAX_PATH_LEN + 1];
+  struct dir *dir = parse_path(name, cp_name);
   struct inode *inode = NULL;
 
   if (dir != NULL)
-    dir_lookup (dir, name, &inode);
+    dir_lookup (dir, cp_name, &inode);
   dir_close (dir);
 
   return file_open (inode);
@@ -84,9 +89,26 @@ filesys_open (const char *name)
 bool
 filesys_remove (const char *name) 
 {
-  struct dir *dir = dir_open_root ();
-  bool success = dir != NULL && dir_remove (dir, name);
-  dir_close (dir); 
+  char cp_name[MAX_PATH_LEN + 1];
+  struct dir *dir = parse_path(name, cp_name);
+
+  struct inode *id;
+  dir_lookup(dir, cp_name, &id);
+
+  char cp_name2[MAX_PATH_LEN + 1];
+  struct dir *dir_now = NULL;
+  bool success = false;
+  if(!inode_is_dir(id))
+    success = dir != NULL && dir_remove (dir, cp_name);
+  else{
+    dir_now = dir_open(id);
+    if(!dir_readdir(dir_now, cp_name2)){
+      success = dir != NULL && dir_remove (dir, cp_name);
+    }
+  }
+
+  if(dir_now) dir_close(dir_now);
+  dir_close (dir);
 
   return success;
 }
@@ -98,6 +120,71 @@ do_format (void)
   free_map_create ();
   if (!dir_create (ROOT_DIR_SECTOR, 16))
     PANIC ("root directory creation failed");
+
+  struct dir *dir = dir_open_root();
+  dir_add(dir, ".", ROOT_DIR_SECTOR);
+  dir_add(dir, "..", ROOT_DIR_SECTOR);
+  dir_close(dir);
+
   free_map_close ();
   printf ("done.\n");
+}
+
+struct dir* parse_path (char *path_name, char *file_name)
+{
+  struct dir *dir = NULL;
+  if(!path_name || !file_name) return NULL;
+  if(strlen(path_name)) return NULL;
+
+  char path[MAX_PATH_LEN+1];
+  strlcpy(path, path_name, MAX_PATH_LEN);
+  if(path[0]=='/'){
+    dir = dir_open_root();  //절대
+  }else{
+    dir = dir_reopen(thread_current() -> cur_dir);  //상대
+  }
+  if(!inode_is_dir (dir_get_inode(dir))) return NULL;
+
+  char *token, *next_token, *save_ptr;
+  token = strtok_r(path_name, "/", &save_ptr);
+  next_token = strtok_r(NULL, "/", &save_ptr);
+
+  while(token && next_token){
+    struct inode *id = NULL;
+    if(!dir_lookup(dir, token, &id) || !inode_is_dir(id))
+    {
+      dir_close(dir);
+      return NULL;
+    }
+    dir_close(dir);
+    dir = dir_open(id);
+    token = next_token;
+    next_token = strtok_r(NULL, "/", &save_ptr);
+  }
+  strlcpy(file_name, token, MAX_PATH_LEN);
+  return dir;
+}
+
+bool
+filesys_create_dir (const char *name) 
+{
+  block_sector_t inode_sector = 0;
+  char cp_name[MAX_PATH_LEN + 1];
+  struct dir *dir = parse_path(name, cp_name);
+  bool success = (dir != NULL
+                  && free_map_allocate (1, &inode_sector)
+                  && dir_create (inode_sector, 16)
+                  && dir_add (dir, cp_name, inode_sector));
+
+  if(success){
+    struct dir *dir_now = dir_open(inode_open(inode_sector));
+    dir_add(dir_now, ".", inode_sector);
+    dir_add(dir_now, "..", inode_get_inumber(dir_get_inode(dir)));
+    dir_close(dir_now);
+  }
+  else if (inode_sector != 0) 
+    free_map_release (inode_sector, 1);
+  dir_close (dir);
+
+  return success;
 }

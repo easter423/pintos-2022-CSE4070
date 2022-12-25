@@ -42,6 +42,7 @@ struct inode_disk
     block_sector_t direct_block[NUM_DIRECT];
     block_sector_t indirect_index_block;
     block_sector_t double_indirect_index_block;
+    uint32_t is_dir;
   };
 
 /* Returns the number of sectors to allocate for an inode SIZE
@@ -102,7 +103,7 @@ inode_init (void)
    Returns true if successful.
    Returns false if memory or disk allocation fails. */
 bool
-inode_create (block_sector_t sector, off_t length)
+inode_create (block_sector_t sector, off_t length, uint32_t is_dir)
 {
   struct inode_disk *disk_inode = NULL;
   bool success = false;
@@ -112,11 +113,12 @@ inode_create (block_sector_t sector, off_t length)
      one sector in size, and you should fix that. */
   ASSERT (sizeof *disk_inode == BLOCK_SECTOR_SIZE);
   disk_inode = calloc (1, sizeof *disk_inode);
-  if (disk_inode != NULL)
+  if (disk_inode != NULL){
       //size_t sectors = bytes_to_sectors (length);
       memset(disk_inode, -1, sizeof(struct inode_disk));
       disk_inode->length = 0;
       disk_inode->magic = INODE_MAGIC;
+      disk_inode->is_dir = is_dir;
       if(!inode_update_file_length(disk_inode, disk_inode->length, length)){
         free(disk_inode); return success;
       }
@@ -136,6 +138,7 @@ inode_create (block_sector_t sector, off_t length)
       //   } 
       free (disk_inode);
       success = true;
+  }
   return success;
 }
 
@@ -572,4 +575,15 @@ static void free_inode_sectors(struct inode_disk *inode_disk)
     free_map_release(first.direct_block[i], 1);
   }
   free_map_release(inode_disk->double_indirect_index_block, 1);
+}
+
+
+bool inode_is_dir(const struct inode *inode)
+{
+  bool result = false;
+  struct inode_disk inode_disk;
+  if(!inode->removed && get_disk_inode(inode, &inode_disk)){
+    result = inode_disk.is_dir;
+  }
+  return result;
 }

@@ -106,11 +106,12 @@ struct thread
     int exit_status;
     int failed;
     struct file* fdt[131];
-
 #endif
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+    struct dir *cur_dir;
   };
 
 /* If false (default), use round-robin scheduler.
