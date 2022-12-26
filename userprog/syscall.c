@@ -38,7 +38,7 @@ syscall_handler (struct intr_frame *f)
 {
 	check_user((int *)f->esp, 0);
 	int *args = (int *)f->esp;
-	//printf("[!%d]",args[0]);
+	//printf("[!%d]\n",args[0]);
 	switch(args[0])
 	{
 		case SYS_HALT:
@@ -177,7 +177,8 @@ bool remove (const char *file)
 	{
 		exit(-1);
 	}
-	return filesys_remove(file);
+	bool temp = filesys_remove(file);
+	return temp;
 }
 
 int open (const char *file)
@@ -315,19 +316,16 @@ bool chdir(const char *dir)
 {
 	char *name = (char*)dir;
 	char cp_name[MAX_PATH_LEN + 1];
-
 	struct dir *ch_dir = parse_path(name, cp_name);
 	if (ch_dir == NULL) return false;
-	
 	struct inode *id = NULL;
     if(!dir_lookup(ch_dir, cp_name, &id) || !inode_is_dir(id))
     {
       dir_close(ch_dir);
-      return NULL;
+      return false;
     }
     dir_close(ch_dir);
     ch_dir = dir_open(id);
-
 	if (ch_dir == NULL) return false;
 	dir_close(thread_current()->cur_dir);
 	thread_current()->cur_dir = ch_dir;

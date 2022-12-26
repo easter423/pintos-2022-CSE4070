@@ -93,12 +93,10 @@ filesys_remove (const char *name)
 {
   char *name_ = (char *)name;
   char cp_name[MAX_PATH_LEN + 1];
+  char cp_name2[MAX_PATH_LEN + 1];
   struct dir *dir = parse_path(name_, cp_name);
-
   struct inode *id;
   dir_lookup(dir, cp_name, &id);
-
-  char cp_name2[MAX_PATH_LEN + 1];
   struct dir *dir_now = NULL;
   bool success = false;
   if(!inode_is_dir(id))
@@ -109,10 +107,7 @@ filesys_remove (const char *name)
       success = dir != NULL && dir_remove (dir, cp_name);
     }
   }
-
-  if(dir_now) dir_close(dir_now);
   dir_close (dir);
-
   return success;
 }
 /* Formats the file system. */
@@ -148,10 +143,9 @@ struct dir* parse_path (char *path_name, char *file_name)
     if(!thread_current() -> cur_dir)
       dir = dir_open_root();
     else
-      dir = dir_reopen(thread_current() -> cur_dir);  
+      dir = dir_reopen(thread_current() -> cur_dir);
   }
   if(!inode_is_dir (dir_get_inode(dir))) return NULL;
-
   char *token, *next_token, *save_ptr;
   token = strtok_r(path, "/", &save_ptr);
   next_token = strtok_r(NULL, "/", &save_ptr);
