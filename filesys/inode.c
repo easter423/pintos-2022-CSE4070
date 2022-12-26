@@ -12,7 +12,7 @@
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
-#define NUM_DIRECT 124
+#define NUM_DIRECT 123
 #define NUM_INDIRECT 128
 
 enum direct_mode{

@@ -38,6 +38,7 @@ syscall_handler (struct intr_frame *f)
 {
 	check_user((int *)f->esp, 0);
 	int *args = (int *)f->esp;
+	//printf("[!%d]",args[0]);
 	switch(args[0])
 	{
 		case SYS_HALT:
@@ -111,7 +112,7 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_INUMBER:
 			check_user(args, 1);
-			f->eax = mkdir ((char*)args[1]);
+			f->eax = inumber (args[1]);
 			break;
 		case SYS_FIBO:
 			check_user(args, 1);
@@ -139,7 +140,6 @@ void halt(void)
 
 void exit(int status)
 {
-	printf("%s: exit(%d)\n",thread_name(),status);
 	thread_current()->exit_status = status;
 	for (int i=3;i<131;i++)
 	{
@@ -312,11 +312,21 @@ bool isdir(int fd)
 
 bool chdir(const char *dir)
 {
-	char name[MAX_PATH_LEN + 1];
-	strlcpy(name, dir, MAX_PATH_LEN);
-	strlcat(name, "\0", MAX_PATH_LEN);
+	char *name = (char*)dir;
 	char cp_name[MAX_PATH_LEN + 1];
+
 	struct dir *ch_dir = parse_path(name, cp_name);
+	if (ch_dir == NULL) return false;
+	
+	struct inode *id = NULL;
+    if(!dir_lookup(ch_dir, cp_name, &id) || !inode_is_dir(id))
+    {
+      dir_close(ch_dir);
+      return NULL;
+    }
+    dir_close(ch_dir);
+    ch_dir = dir_open(id);
+
 	if (ch_dir == NULL) return false;
 	dir_close(thread_current()->cur_dir);
 	thread_current()->cur_dir = ch_dir;
