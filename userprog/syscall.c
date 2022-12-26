@@ -140,6 +140,7 @@ void halt(void)
 
 void exit(int status)
 {
+	printf("%s: exit(%d)\n", thread_name(), status);
 	thread_current()->exit_status = status;
 	for (int i=3;i<131;i++)
 	{
@@ -249,7 +250,7 @@ int read(int fd, void *buffer, unsigned size)
 
 int write(int fd, const void *buffer, unsigned size)
 {
-	int ret=-1;
+	int ret = -1;
 	lock_acquire(&syn_lock);
 	if(fd == 1)
 	{
@@ -263,7 +264,7 @@ int write(int fd, const void *buffer, unsigned size)
 			exit(-1);
 		}
 		
-		ret= file_write(fs, buffer, size);
+		ret = file_write(fs, buffer, size);
 	}
 	lock_release(&syn_lock);
 	return ret;
